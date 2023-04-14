@@ -107,6 +107,7 @@ def draw_box_on_image(self, image, categories, ann, color):
     cv2.putText(image, text, (x, y + txt_size[1]), font, 1.5, txt_color, thickness=5)
     return image
 ```
+- [ ] 2023.04.14新增加撤销上一个标注对象功能，快捷键Ctrl+z
 
 ## Reference
 https://github.com/facebookresearch/segment-anything 
