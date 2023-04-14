@@ -106,6 +106,9 @@ class Editor:
             self.image_id, self.category_id, self.curr_inputs.curr_mask
         )
 
+    def delet_ann(self):
+        self.dataset_explorer.delet_annotation(self.image_id)
+
     def save(self):
         self.dataset_explorer.save_annotation()
 
