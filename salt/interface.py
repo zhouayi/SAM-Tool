@@ -103,6 +103,11 @@ class ApplicationInterface(QWidget):
         self.editor.reset()
         self.graphics_view.imshow(self.editor.display)    
 
+    def delet(self):
+        self.editor.delet_ann()
+        self.editor.reset()
+        self.graphics_view.imshow(self.editor.display)   
+        
     def next_image(self):
         self.editor.next_image()
         self.graphics_view.imshow(self.editor.display)    
@@ -132,6 +137,7 @@ class ApplicationInterface(QWidget):
         self.layout.addLayout(button_layout)
         buttons = [
             ("添加对象", lambda: self.add()),
+            ("撤销对象", lambda: self.delet()),
             ("重置", lambda: self.reset()),
             ("前一张", lambda: self.prev_image()),
             ("下一张", lambda: self.next_image()),
@@ -179,6 +185,8 @@ class ApplicationInterface(QWidget):
             self.reset()
         if event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_S:
             self.save_all()
+        if event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_Z:
+            self.delet()
         # elif event.key() == Qt.Key_Space:
         #     # Do something if the space bar is pressed
         #     pass
