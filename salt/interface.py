@@ -110,7 +110,8 @@ class ApplicationInterface(QWidget):
         
     def next_image(self):
         self.editor.next_image()
-        self.graphics_view.imshow(self.editor.display)    
+        self.graphics_view.imshow(self.editor.display)
+        self.editor.save()
 
     def prev_image(self):
         self.editor.prev_image()
