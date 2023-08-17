@@ -47,7 +47,7 @@ class Editor:
         )
         self.curr_inputs = CurrentCapturedInputs()
         self.categories = self.dataset_explorer.get_categories()
-        self.image_id = 0
+        self.image_id = self.dataset_explorer.get_last_anno_img_id() 
         self.category_id = 0
         self.show_other_anns = True
         (
