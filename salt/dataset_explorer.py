@@ -123,6 +123,11 @@ class DatasetExplorer:
             tuple([int(255 * c) for c in color]) for color in self.category_colors
         ]
 
+        # get the last anno image id
+        self.last_img_id = 0
+        if self.coco_json["annotations"]:
+            self.last_img_id = self.coco_json["annotations"][-1].get("image_id")
+
     def __init_coco_json(self, categories):
         appended_image_names = [
             os.path.join("images", name) for name in self.image_names
@@ -161,7 +166,7 @@ class DatasetExplorer:
         self.annotations_by_image_id[image_id].append(annotation)
     
     def __delet_to_our_annotation_dict(self, image_id):
-        self.annotations_by_image_id[image_id].pop(-1)
+        return self.annotations_by_image_id[image_id].pop(-1)
 
     def get_annotations(self, image_id, return_colors=False):
         if image_id not in self.annotations_by_image_id:
@@ -183,10 +188,18 @@ class DatasetExplorer:
         self.global_annotation_id += 1
 
     def delet_annotation(self, image_id):
-        self.__delet_to_our_annotation_dict(image_id)
-        self.coco_json["annotations"].pop(-1)
-        self.global_annotation_id -= 1
+        # Prevents program error exit when no object is deleted
+        if self.annotations_by_image_id[image_id]:
+            annotation = self.__delet_to_our_annotation_dict(image_id)
+            # Ensure that the data deleted from coco_json is the same as the actual data. 
+            # When modifying a previously saved image, if pop(-1) is used, the result of deletion is not correct.
+            index = self.coco_json["annotations"].index(annotation)
+            self.coco_json["annotations"].pop(index)
+            self.global_annotation_id -= 1
 
     def save_annotation(self):
         with open(self.coco_json_path, "w") as f:
             json.dump(self.coco_json, f)
+
+    def get_last_anno_img_id(self):
+        return self.last_img_id
