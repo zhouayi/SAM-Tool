@@ -189,7 +189,7 @@ class DatasetExplorer:
 
     def delet_annotation(self, image_id):
         # Prevents program error exit when no object is deleted
-        if self.annotations_by_image_id[image_id]:
+        if self.annotations_by_image_id.get(image_id, []):
             annotation = self.__delet_to_our_annotation_dict(image_id)
             # Ensure that the data deleted from coco_json is the same as the actual data. 
             # When modifying a previously saved image, if pop(-1) is used, the result of deletion is not correct.
