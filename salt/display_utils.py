@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from pycocotools import mask as coco_mask
+from PIL import Image, ImageDraw, ImageFont
 
 class DisplayUtils:
     def __init__(self):
@@ -43,10 +44,18 @@ class DisplayUtils:
 
         text = '{} {}'.format(ann["id"],categories[ann["category_id"]])
         txt_color = (0, 0, 0) if np.mean(color) > 127 else (255, 255, 255)
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        txt_size = cv2.getTextSize(text, font, 1.5, 1)[0]
-        cv2.rectangle(image, (x, y + 1), (x + txt_size[0] + 1, y + int(1.5*txt_size[1])), color, -1)
-        cv2.putText(image, text, (x, y + txt_size[1]), font, 1.5, txt_color, thickness=5)
+
+        # 增加中文的支持（原opencv不支持显示汉字）
+        font = ImageFont.truetype("c:/windows/fonts/simhei.ttf", size=30)
+        image = image[..., ::-1] 
+        image = Image.fromarray(image, mode="RGB")
+        draw = ImageDraw.Draw(image)
+        txt_size = draw.textsize(text=text, font=font)
+        # draw.text((x + 1, y + 1), text, fill=txt_color, font=font)
+        draw.text((x + 1, y + 1), text, fill="red", font=font)
+        image = np.asarray(image)
+        image = image[..., ::-1]
+        
         return image
 
     def draw_annotations(self, image, categories, annotations, colors):

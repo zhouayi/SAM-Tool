@@ -1,7 +1,7 @@
 # SAM-Labelimg
 利用Segment Anything(SAM)模型进行快速标注
 
-#### 1.下载项目
+## 1.下载项目
 
 项目1：https://github.com/zhouayi/SAM-Tool
 
@@ -17,11 +17,11 @@ pip install -e .
 
 下载`SAM`模型：https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth
 
-#### 2.把数据放置在`<dataset_path>/images/*`这样的路径中，并创建空文件夹`<dataset_path>/embeddings`
+## 2.把数据放置在`<dataset_path>/images/*`这样的路径中，并创建空文件夹`<dataset_path>/embeddings`
 
-#### 3.将项目1中的`helpers`文件夹复制到项目2的主目录下
+## 3.将项目1中的`helpers`文件夹复制到项目2的主目录下
 
-##### 3.1 运行`extrac_embeddings.py`文件来提取图片的`embedding`
+### 3.1 运行`extrac_embeddings.py`文件来提取图片的`embedding`
 
 ```bash
 # cd到项目2的主目录下
@@ -34,7 +34,7 @@ python helpers\extract_embeddings.py --checkpoint-path sam_vit_h_4b8939.pth --da
 
 运行完毕后，`<dataset_path>/embeddings`下会生成相应的npy文件
 
-##### 3.2 运行`generate_onnx.py`将`pth`文件转换为`onnx`模型文件
+### 3.2 运行`generate_onnx.py`将`pth`文件转换为`onnx`模型文件
 
 ```bash
 # cd到项目2的主目录下
@@ -49,7 +49,7 @@ python helpers\generate_onnx.py --checkpoint-path sam_vit_h_4b8939.pth --onnx-mo
 
 【**注意：提供给的代码转换得到的`onnx`模型并不支持动态输入大小，所以如果你的数据集中图片尺寸不一，那么可选方案是以不同的`orig-im-size`参数导出不同的`onnx`模型供后续使用**】
 
-#### 4.将生成的`sam_onnx.onnx`模型复制到项目1的主目录下，运行`segment_anything_annotator.py`进行标注
+## 4.将生成的`sam_onnx.onnx`模型复制到项目1的主目录下，运行`segment_anything_annotator.py`进行标注
 
 ```bash
 # cd到项目1的主目录下
@@ -73,12 +73,12 @@ python segment_anything_annotator.py --onnx-model-path sam_onnx.onnx --dataset-p
 
 最后生成的标注文件为`coco`格式，保存在`<dataset_path>/annotations.json`。
 
-#### 5.检查标注结果
+## 5.检查标注结果
 ```bash
 python cocoviewer.py -i <dataset_path> -a <dataset_path>\annotations.json
 ```
 ![image](assets/catdog.png)
-#### 6.其他
+## 6.其他
 
 - [ ] 修改标注框线条的宽度的代码位置
 
@@ -111,9 +111,9 @@ def draw_box_on_image(self, image, categories, ann, color):
 
 ---
 
-#### 6.说明
+## 7.说明
 
-##### 6.1 注意事项说明
+### 7.1 注意事项说明
 
 1. 第一次打开加载数据有些慢，一定耐心等待，不要猛点。
 2. 每一次启动后先去右边选中自己的目标类别。
@@ -122,16 +122,62 @@ def draw_box_on_image(self, image, categories, ann, color):
 4. 标错了(即出现了矩形框和标签后)，点击“撤销对象”或快捷键ctrl+z，可以取消。随后重新标注时标签上计数的数字会不会，但不影响。
 5. 点击下一张时会自动保存，但退出之前还是记得保存一下先。
 6. 鼠标滚轮可以缩小放大图片。
+7. 第一次给的类别，后续就永远是这些类别的，只有先去把./dataset_path/annotations.json删掉。
 
-##### 6.2 新增特性及bug优化
+### 7.2 新增特性及bug优化
 
 1. 现已改为：每次打开软件时默认位置为上一次最后标注那张图所在位置。
 2. 修复当前图像中没标注目标时点击“撤销对象”或快捷键ctrl+z时程序会退出的问题。
 3. 已改为强制提醒，在未选择标注类别时会弹窗提醒。
 4. 新增进度提示：点击窗口上方的 “显示当前进度” 可看到图像总数量及当前所在位置。
+5. 新增界面打的标签支持中文，可参考[这](https://blog.csdn.net/qq_45945548/article/details/121316099)。（simhei.ttf在./assets文件夹中有）
 
 - [ ] 在标注过快时，可能会意外退出。
 - [ ] TODO：bug，在界面上没有任何标注，上来直接点击“撤销对象”，程序依旧会退出。
+
+---
+
+## 8. 数据、环境准备及打包
+
+注意：以及仅针对运行这个项目的环境，能够最小的打包。
+
+### 8.1 环境及打包
+
+以下环境准备好后就能运行此项目。（当然还需要准备好的数据）
+
+```bash
+conda create -n label python=3.8 -y
+conda activate label
+
+pip install  black==23.3.0  imageio==2.27.0 matplotlib==3.7.1 numpy==1.24.2 onnxruntime==1.14.1 opencv-python==4.7.0.72
+pip install pillow==9.5.0 pycocotools==2.0.6 scikit-image==0.20.0  scipy==1.9.1 tomli==2.0.1
+pip install PyQt5
+pip install pyinstaller      # 为了打包
+```
+
+打包成exe：pyinstaller -F -w segment_anything_annotator.py
+
+### 8.2 数据
+
+按照上面的方法，得到的数据格式应如下：
+
+./
+│- └─dataset
+│	    ├─embeddings
+│    	│     00000.npy
+│    	│     00001.npy
+│    	│     00002.npy
+│    	│	 .......
+│    	└─images
+│        	 00000.jpg
+│         	00001.jpg
+│         	00002.jpg
+│    	 	.......
+
+│- sam_onnx.onnx
+│- segment_anything_annotator.exe
+
+
 
 ## Reference
 https://github.com/facebookresearch/segment-anything 
