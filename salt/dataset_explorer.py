@@ -192,7 +192,8 @@ class DatasetExplorer:
 
     def delet_annotation(self, image_id):
         # 加个判断，避免多点然后直接退出
-        if self.annotations_by_image_id[image_id]: 
+        # if self.annotations_by_image_id[image_id]: 
+        if self.annotations_by_image_id.get(image_id, []):  # 避免直接开始就点撤销的空字典的“KeyError”错误
             # 确保  self.coco_json 中删除的数据和图片显示是一致的，不能直接用 pop(-1)
             # 之前的方式是无法修改之前的标错的数据的，界面显示正确，但是coco删的是错的。
             # 现在这种方式就一个缺点，删除之前的，coco中的注释的id不是连续完整的，但完全不影响

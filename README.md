@@ -133,7 +133,7 @@ def draw_box_on_image(self, image, categories, ann, color):
 5. 新增界面打的标签支持中文，可参考[这](https://blog.csdn.net/qq_45945548/article/details/121316099)。（simhei.ttf在./assets文件夹中有）
 
 - [ ] 在标注过快时，可能会意外退出。
-- [ ] TODO：bug，在界面上没有任何标注，上来直接点击“撤销对象”，程序依旧会退出。
+- [x] TODO：bug，在界面上没有任何标注，上来直接点击“撤销对象”，程序依旧会退出。
 
 ---
 
