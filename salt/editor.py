@@ -5,6 +5,9 @@ from salt.onnx_model import OnnxModel
 from salt.dataset_explorer import DatasetExplorer
 from salt.display_utils import DisplayUtils
 
+from PyQt5.QtWidgets import QMessageBox
+
+
 class CurrentCapturedInputs:
     def __init__(self):
         self.input_point = np.array([])
@@ -47,7 +50,11 @@ class Editor:
         )
         self.curr_inputs = CurrentCapturedInputs()
         self.categories = self.dataset_explorer.get_categories()
-        self.image_id = self.dataset_explorer.get_last_anno_img_id() 
+        # 得到最后标注的一张的id，也就是当前打开图片的id
+        self.image_id = self.dataset_explorer.get_last_anno_img_id()  
+         # 得到所有图片数量
+        self.imgs_num = self.dataset_explorer.get_imgs_num()         
+
         self.category_id = 0
         self.show_other_anns = True
         (
@@ -58,6 +65,9 @@ class Editor:
         self.display = self.image_bgr.copy()
         self.du = DisplayUtils()
         self.reset()
+
+        # 添加的警告信息 （第一次点击必须添加类别，不然警告）
+        self.not_selected_category_flag = True
 
     def add_click(self, new_pt, new_label):
         self.curr_inputs.add_input_click(new_pt, new_label)
@@ -102,7 +112,11 @@ class Editor:
         self.reset()
 
     def save_ann(self):
-        self.dataset_explorer.add_annotation(
+        if  self.not_selected_category_flag:
+            msg_box = QMessageBox(QMessageBox.Critical, "错误", "请先从右边选择你的目标类别！")
+            msg_box.exec_()
+        else:
+            self.dataset_explorer.add_annotation(
             self.image_id, self.category_id, self.curr_inputs.curr_mask
         )
 
@@ -154,3 +168,7 @@ class Editor:
     def select_category(self, category_name):
         category_id = self.categories.index(category_name)
         self.category_id = category_id
+        # 添加类别后，就把 self.selected_category_flag 标识改为 True
+        if self.not_selected_category_flag:
+            self.not_selected_category_flag = False
+           

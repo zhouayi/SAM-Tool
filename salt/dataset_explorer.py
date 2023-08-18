@@ -37,7 +37,7 @@ def init_coco(dataset_folder, image_names, categories, coco_json_path):
                 "height": im.shape[0],
             }
         )
-    with open(coco_json_path, "w") as f:
+    with open(coco_json_path, "w", encoding="utf-8") as f:
         json.dump(coco_json, f)
 
 
@@ -106,7 +106,7 @@ class DatasetExplorer:
         self.coco_json_path = coco_json_path
         if not os.path.exists(coco_json_path):
             self.__init_coco_json(categories)
-        with open(coco_json_path, "r") as f:
+        with open(coco_json_path, "r", encoding="utf-8") as f:
             self.coco_json = json.load(f)
 
         self.categories = [category["name"] for category in self.coco_json["categories"]]
@@ -123,10 +123,13 @@ class DatasetExplorer:
             tuple([int(255 * c) for c in color]) for color in self.category_colors
         ]
 
-        # get the last anno image id
+        # 为了得到最后标注的图片的id
         self.last_img_id = 0
         if self.coco_json["annotations"]:
             self.last_img_id = self.coco_json["annotations"][-1].get("image_id")
+        
+        # 得到所有图片的数量
+        self.imgs_num = len(self.coco_json["images"])
 
     def __init_coco_json(self, categories):
         appended_image_names = [
@@ -188,18 +191,24 @@ class DatasetExplorer:
         self.global_annotation_id += 1
 
     def delet_annotation(self, image_id):
-        # Prevents program error exit when no object is deleted
-        if self.annotations_by_image_id[image_id]:
+        # 加个判断，避免多点然后直接退出
+        if self.annotations_by_image_id[image_id]: 
+            # 确保  self.coco_json 中删除的数据和图片显示是一致的，不能直接用 pop(-1)
+            # 之前的方式是无法修改之前的标错的数据的，界面显示正确，但是coco删的是错的。
+            # 现在这种方式就一个缺点，删除之前的，coco中的注释的id不是连续完整的，但完全不影响
             annotation = self.__delet_to_our_annotation_dict(image_id)
-            # Ensure that the data deleted from coco_json is the same as the actual data. 
-            # When modifying a previously saved image, if pop(-1) is used, the result of deletion is not correct.
             index = self.coco_json["annotations"].index(annotation)
             self.coco_json["annotations"].pop(index)
             self.global_annotation_id -= 1
 
     def save_annotation(self):
-        with open(self.coco_json_path, "w") as f:
+        with open(self.coco_json_path, "w", encoding="utf-8") as f:
             json.dump(self.coco_json, f)
 
     def get_last_anno_img_id(self):
+        # 为了得到最后标注的一张的图片的id
         return self.last_img_id
+    
+    def get_imgs_num(self):
+        # 得到所有的图片数量
+        return self.imgs_num

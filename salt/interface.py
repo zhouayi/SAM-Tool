@@ -2,7 +2,7 @@ import cv2
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QGraphicsView, QGraphicsScene
 from PyQt5.QtGui import QImage, QPixmap, QPainter, QWheelEvent, QMouseEvent
 from PyQt5.QtCore import Qt, QRectF
-from PyQt5.QtWidgets import QPushButton, QRadioButton, QVBoxLayout, QHBoxLayout, QWidget, QLabel
+from PyQt5.QtWidgets import QPushButton, QRadioButton, QVBoxLayout, QHBoxLayout, QWidget, QLabel, QMessageBox
 
 class CustomGraphicsView(QGraphicsView):
     def __init__(self, editor):
@@ -120,6 +120,12 @@ class ApplicationInterface(QWidget):
     def toggle(self):
         self.editor.toggle()
         self.graphics_view.imshow(self.editor.display)    
+    
+    def process(self):
+        # 为了显示一下进度
+        info = "当前进度：{}/{}".format(self.editor.image_id + 1, self.editor.imgs_num)
+        msg_box = QMessageBox(QMessageBox.Information, "进度", info)
+        msg_box.exec_()
 
     def transparency_up(self):
         self.editor.step_up_transparency()
@@ -143,6 +149,7 @@ class ApplicationInterface(QWidget):
             ("前一张", lambda: self.prev_image()),
             ("下一张", lambda: self.next_image()),
             ("显示已标注信息", lambda: self.toggle()),
+            ("显示当前进度", lambda: self.process()),
             ("调高透明度", lambda: self.transparency_up()),
             ("调低透明度", lambda: self.transparency_down()),
             ("保存", lambda: self.save_all()), 
