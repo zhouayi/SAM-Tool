@@ -204,7 +204,8 @@ class DatasetExplorer:
 
     def save_annotation(self):
         with open(self.coco_json_path, "w", encoding="utf-8") as f:
-            json.dump(self.coco_json, f)
+            # ensure_ascii=False是为了保存json时，中文就是中文，不会自动转为unicode字符
+            json.dump(self.coco_json, f, ensure_ascii=False)
 
     def get_last_anno_img_id(self):
         # 为了得到最后标注的一张的图片的id
