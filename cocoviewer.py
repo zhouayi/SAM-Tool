@@ -98,7 +98,7 @@ def load_annotations(fname: str) -> dict:
     """Loads annotations file."""
     logging.info(f"Parsing {fname}...")
 
-    with open(fname) as f:
+    with open(fname, encoding="utf-8") as f:
         instances = json.load(f)
     return instances
 
@@ -171,7 +171,7 @@ def draw_bboxes(draw, objects, labels, obj_categories, ignore, width, label_size
                 try:
                     try:
                         # Should work for Linux
-                        font = ImageFont.truetype("DejaVuSans.ttf", size=label_size)
+                        font = ImageFont.truetype("simhei.ttf", size=label_size)
                     except OSError:
                         # Should work for Windows
                         font = ImageFont.truetype("Arial.ttf", size=label_size)
