@@ -34,6 +34,8 @@ python helpers\extract_embeddings.py --checkpoint-path sam_vit_h_4b8939.pth --da
 
 运行完毕后，`<dataset_path>/embeddings`下会生成相应的npy文件
 
+注：只是把图片抽取成numpy的数据，对python的版本，pytorch的版本要求不是特别大。
+
 ### 3.2 运行`generate_onnx.py`将`pth`文件转换为`onnx`模型文件
 
 ```bash
@@ -48,6 +50,15 @@ python helpers\generate_onnx.py --checkpoint-path sam_vit_h_4b8939.pth --onnx-mo
 - `orig-im-size`：数据中图片的尺寸大小`（height, width）`
 
 【**注意：提供给的代码转换得到的`onnx`模型并不支持动态输入大小，所以如果你的数据集中图片尺寸不一，那么可选方案是以不同的`orig-im-size`参数导出不同的`onnx`模型供后续使用**】
+
+注：为了导出成onnx：`pip install opencv-python pycocotools matplotlib onnxruntime onnx`  # 以下都是segment-anything项目的环境要求：
+
+- segment-anything中要求的是 `python>=3.8`,`pytorch>=1.7`,`torchvision>=0.8`,只是上一步的抽取，版本要求不大，但是转onnx时版本不对就不行。
+- 我用 python3.7 + torch1.8-cu111还是python3.8 + torch1.8-cu111 都是报错：
+  “  File "/root/anaconda3/envs/s_sam/lib/python3.7/site-packages/torch/onnx/symbolic_helper.py", line 748, in _set_opset_version
+      raise ValueError("Unsupported ONNX opset version: " + str(opset_version))
+  ValueError: Unsupported ONNX opset version: 15”
+- 最后是在docker镜像“nvidia/cuda:11.1.1-cudnn8-devel-ubuntu18.04”中用的python3.9.16 + torch==2.0.1 （这个torch我是直接pip install的，它会自己安装cuda相关的库，或许它不需要带cuda的版本也能运行）（在备注详细些：onnx\==1.14.1、onnxruntime\==1.16.1）（注意一般直接Pip安装的torch的cuda版本都会超过比较老的显卡驱动的支持的最大cuda版本，就会用不了）
 
 ## 4.将生成的`sam_onnx.onnx`模型复制到项目1的主目录下，运行`segment_anything_annotator.py`进行标注
 
