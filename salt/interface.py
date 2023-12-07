@@ -2,7 +2,7 @@ import cv2
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QGraphicsView, QGraphicsScene
 from PyQt5.QtGui import QImage, QPixmap, QPainter, QWheelEvent, QMouseEvent
 from PyQt5.QtCore import Qt, QRectF
-from PyQt5.QtWidgets import QPushButton, QRadioButton, QVBoxLayout, QHBoxLayout, QWidget, QLabel, QMessageBox
+from PyQt5.QtWidgets import QPushButton, QRadioButton, QVBoxLayout, QHBoxLayout, QWidget, QLabel, QMessageBox, QInputDialog
 
 class CustomGraphicsView(QGraphicsView):
     def __init__(self, editor):
@@ -127,6 +127,15 @@ class ApplicationInterface(QWidget):
         msg_box = QMessageBox(QMessageBox.Information, "进度", info)
         msg_box.exec_()
 
+    def jump(self):
+        # 为了图片跳转
+        value, success = QInputDialog.getInt(self, "图片跳转", f"请输入[1,{self.editor.imgs_num}]中的整数: ", value=self.editor.image_id + 1, min=1, max=self.editor.imgs_num, step=1)
+        print(value, success)
+        if success:
+            self.editor.image_id = value - 1 - 1  # 为了显示，给的值都比索引大1，所以减去1
+            self.editor.next_image()   # 然后这里面对self.editor.image_id加了1，所以上面还要再减去1，
+            self.graphics_view.imshow(self.editor.display)
+
     def transparency_up(self):
         self.editor.step_up_transparency()
         self.graphics_view.imshow(self.editor.display)
@@ -150,6 +159,7 @@ class ApplicationInterface(QWidget):
             ("下一张", lambda: self.next_image()),
             ("显示已标注信息", lambda: self.toggle()),
             ("显示当前进度", lambda: self.process()),
+            ("跳转", lambda: self.jump()),
             ("调高透明度", lambda: self.transparency_up()),
             ("调低透明度", lambda: self.transparency_down()),
             ("保存", lambda: self.save_all()), 
