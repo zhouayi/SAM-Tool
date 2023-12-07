@@ -29,6 +29,14 @@ class DisplayUtils:
     def __convert_ann_to_mask(self, ann, height, width):
         mask = np.zeros((height, width), dtype=np.uint8)
         poly = ann["segmentation"]
+
+        # 当边框刚好是4个值，可能会被认为矩形框，会出错，所以为4个值，再后面添加一个相同的点的坐标
+        # TODO: 那万一出现两个点,再加一个点坐标就是4个值了，可能会出错，先放这里吧。
+        # 解决错误地址：https://github.com/anuragxel/salt/issues/43
+        for i in range(len(poly)):
+            if len(poly[i]) == 4:
+                poly[i] += poly[i][-2:]  # <---------------------------- Add same point again 
+
         rles = coco_mask.frPyObjects(poly, height, width)
         rle = coco_mask.merge(rles)
         mask_instance = coco_mask.decode(rle)
