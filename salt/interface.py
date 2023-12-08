@@ -130,7 +130,6 @@ class ApplicationInterface(QWidget):
     def jump(self):
         # 为了图片跳转
         value, success = QInputDialog.getInt(self, "图片跳转", f"请输入[1,{self.editor.imgs_num}]中的整数: ", value=self.editor.image_id + 1, min=1, max=self.editor.imgs_num, step=1)
-        print(value, success)
         if success:
             self.editor.image_id = value - 1 - 1  # 为了显示，给的值都比索引大1，所以减去1
             self.editor.next_image()   # 然后这里面对self.editor.image_id加了1，所以上面还要再减去1，
