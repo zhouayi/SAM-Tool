@@ -1,6 +1,9 @@
 import os, copy
 import numpy as np
 
+from multiprocessing.pool import ThreadPool
+from multiprocessing import cpu_count
+
 from salt.onnx_model import OnnxModel
 from salt.dataset_explorer import DatasetExplorer
 from salt.display_utils import DisplayUtils
@@ -69,6 +72,9 @@ class Editor:
         # 添加的警告信息 （第一次点击必须添加类别，不然警告）
         self.not_selected_category_flag = True
 
+        # 创建异步处理的线程池，用于保存函数，使下一张时更加丝滑
+        self.pool = ThreadPool(processes=cpu_count() // 2)
+
     def add_click(self, new_pt, new_label):
         self.curr_inputs.add_input_click(new_pt, new_label)
         masks, low_res_logits = self.onnx_helper.call(
@@ -124,7 +130,9 @@ class Editor:
         self.dataset_explorer.delet_annotation(self.image_id)
 
     def save(self):
-        self.dataset_explorer.save_annotation()
+        # self.dataset_explorer.save_annotation()
+        # 使用线程池异步处理
+        self.pool.apply_async(self.dataset_explorer.save_annotation)
 
     def next_image(self):
         if self.image_id == self.dataset_explorer.get_num_images() - 1:

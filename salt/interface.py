@@ -1,6 +1,7 @@
+from PyQt5 import QtGui
 import cv2
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QGraphicsView, QGraphicsScene
-from PyQt5.QtGui import QImage, QPixmap, QPainter, QWheelEvent, QMouseEvent
+from PyQt5.QtGui import QImage, QPixmap, QPainter, QWheelEvent, QMouseEvent, QCloseEvent
 from PyQt5.QtCore import Qt, QRectF
 from PyQt5.QtWidgets import QPushButton, QRadioButton, QVBoxLayout, QHBoxLayout, QWidget, QLabel, QMessageBox, QInputDialog
 
@@ -185,8 +186,31 @@ class ApplicationInterface(QWidget):
             panel_layout.addWidget(label)
         return panel
 
+    # 这个函数是继承于父类的，这里我重写了,采用异步保存数据，必须等线程池先写完，不然直接退出json文件就坏了。
+    # 这是点击右上角的x关闭按钮触发的时间
+    def closeEvent(self, event: QCloseEvent) -> None:
+        reply = QMessageBox.question(self, u'警告', u'确认退出?', QMessageBox.Yes, QMessageBox.No)
+        if reply==QMessageBox.Yes:
+            event.accept()  # 关闭窗口
+            # 点击确定后，再保存一下
+            self.save_all()
+            
+            # 之后得留时间让线程池的保存执行完，不然会损坏json文件
+            self.editor.pool.close()
+            self.editor.pool.join()
+        else:
+            event.ignore()  # 忽视点击X事件
+        # return super().closeEvent(event)
+
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
+            
+            # 退出前再保存一下
+            self.save_all()
+            # 在关闭软件前先关闭线程池，并通过join阻塞祖先成，文件保存完后才退出。
+            self.editor.pool.close()
+            self.editor.pool.join()
+
             self.app.quit()
         if event.key() == Qt.Key_A:
             self.prev_image()
