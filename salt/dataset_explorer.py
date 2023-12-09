@@ -131,6 +131,10 @@ class DatasetExplorer:
         # 得到所有图片的数量
         self.imgs_num = len(self.coco_json["images"])
 
+        # 因为使用了异步存数据，为了确保安全，每保存5次，就重新写一份json当做备份
+        self.async_nums = 0
+        self.backup_json_path = os.path.join(os.path.dirname(self.coco_json_path), "backup.json")
+
     def __init_coco_json(self, categories):
         appended_image_names = [
             os.path.join("images", name) for name in self.image_names
@@ -206,6 +210,14 @@ class DatasetExplorer:
         with open(self.coco_json_path, "w", encoding="utf-8") as f:
             # ensure_ascii=False是为了保存json时，中文就是中文，不会自动转为unicode字符
             json.dump(self.coco_json, f, ensure_ascii=False)
+    
+        # 这里是加的异步的备份数据保存：
+        if self.async_nums % 5 == 0:
+            with open(self.backup_json_path, "w", encoding="utf-8") as f:
+                json.dump(self.coco_json, f, ensure_ascii=False)
+            
+        self.async_nums += 1
+
 
     def get_last_anno_img_id(self):
         # 为了得到最后标注的一张的图片的id
