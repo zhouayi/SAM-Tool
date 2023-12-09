@@ -130,10 +130,9 @@ def draw_box_on_image(self, image, categories, ann, color):
 2. 每一次启动后先去右边选中自己的目标类别。
 3. 鼠标左键点击目标选中后，一些靠的很近的其它区域若是也被选中了，可以点击鼠标右键取消那些区域，或者直接点击“重置”，重新来；
    同样鼠标左键点击目标选中后，目标区域并未被完全选中的话，可再用鼠标左键点击目未被选中的区域。
-4. 标错了(即出现了矩形框和标签后)，点击“撤销对象”或快捷键ctrl+z，可以取消。随后重新标注时标签上计数的数字会不会，但不影响。
+4. 标错了(即出现了矩形框和标签后)，点击“撤销对象”或快捷键ctrl+z，可以取消。随后重新标注时标签上计数的数字可能有错误，但不影响。
 5. 点击下一张时会自动保存，但退出之前还是记得保存一下先。
 6. 鼠标滚轮可以缩小放大图片。
-7. 第一次给的类别，后续就永远是这些类别的，只有先去把./dataset_path/annotations.json删掉。
 
 ### 7.2 新增特性及bug优化
 
@@ -143,9 +142,12 @@ def draw_box_on_image(self, image, categories, ann, color):
 4. 新增进度提示：点击窗口上方的 “显示当前进度” 可看到图像总数量及当前所在位置。
 5. 新增界面打的标签支持中文，可参考[这](https://blog.csdn.net/qq_45945548/article/details/121316099)。（simhei.ttf在./assets文件夹中有）
 6. 3.2步骤中，由sam_vit_h_4b8939.pth 转成./sam_onnx.onnx，现在我已经将转换好的onnx传上来了，但大小应该是指定的 1024 1280 ，但好像用其它尺寸的图像也是可以做标注，可以先试一试，不行再去转换。
+7. 新增**图片跳转**功能：点击窗口上方的“跳转”，输入跳转的序号，会跳到对应图片位置。
+8. 新增异步数据保存，标注过程更加顺滑，且每存5次，会更新"backup.json"做数据备份，以防软件意外退出时，异步数据没写完而导致"annotations.json"错误。
 
-- [ ] 在标注过快时，可能会意外退出。
-- [x] TODO：bug，在界面上没有任何标注，上来直接点击“撤销对象”，程序依旧会退出。
+- [x] ~~在标注过快时，可能会意外退出。报错"TypeError: Argument 'bb' has incorrect type (expected numpy.ndarray, got list)"~~
+  已解决，bug原因[地址](https://github.com/anuragxel/salt/issues/43)。
+- [x] ~~TODO：bug，在界面上没有任何标注，上来直接点击“撤销对象”，程序依旧会退出。~~已解决。
 
 ---
 
@@ -161,7 +163,7 @@ def draw_box_on_image(self, image, categories, ann, color):
 conda create -n label python=3.8 -y
 conda activate label
 
-pip install  black==23.3.0  imageio==2.27.0 matplotlib==3.7.1 numpy==1.24.2 onnxruntime==1.14.1 opencv-python==4.7.0.72
+pip install  black==23.3.0  imageio==2.27.0 matplotlib==3.7.1 numpy==1.24.2 onnxruntime==1.14.1 opencv-python==4.7.0.72  simplification==0.6.7  distinctipy==1.2.2
 pip install pillow==9.5.0 pycocotools==2.0.6 scikit-image==0.20.0  scipy==1.9.1 tomli==2.0.1
 pip install PyQt5
 pip install pyinstaller      # 为了打包
