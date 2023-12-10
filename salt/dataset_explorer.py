@@ -7,6 +7,7 @@ import numpy as np
 from simplification.cutil import simplify_coords_vwp
 import os, cv2, copy
 from distinctipy import distinctipy
+from datetime import datetime
 
 
 def init_coco(dataset_folder, image_names, categories, coco_json_path):
@@ -15,9 +16,9 @@ def init_coco(dataset_folder, image_names, categories, coco_json_path):
             "description": "SAM Dataset",
             "url": "",
             "version": "1.0",
-            "year": 2023,
-            "contributor": "Sam",
-            "date_created": "2021/07/01",
+            "year": int(datetime.now().strftime("%Y")),
+            "contributor": "SH",
+            "date_created": datetime.now().strftime("%Y/%m/%d"),
         },
         "images": [],
         "annotations": [],
@@ -103,6 +104,7 @@ class DatasetExplorer:
         self.image_names = [
             os.path.split(name)[1] for name in self.image_names if name.endswith(".jpg") or name.endswith(".png")
         ]
+        self.image_names.sort()
         self.coco_json_path = coco_json_path
         if not os.path.exists(coco_json_path):
             self.__init_coco_json(categories)
