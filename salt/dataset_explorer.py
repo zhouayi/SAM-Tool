@@ -134,9 +134,12 @@ class DatasetExplorer:
         # 得到所有图片的数量
         self.imgs_num = len(self.coco_json["images"])
 
-        # 因为使用了异步存数据，为了确保安全，每保存5次，就重新写一份json当做备份
+        # 因为使用了异步存数据，为了确保安全，每保存20次，就会再写一份json当做备份
         self.async_nums = 0
         self.backup_json_path = os.path.join(os.path.dirname(self.coco_json_path), "backup.json")
+
+        # 创建一个变量来记录标注是否变化，变化了才会存json文件，而不是每次下一张都存，会极大改善快速连续下一张的卡顿感
+        self.save_flag = False
 
     def __init_coco_json(self, categories):
         appended_image_names = [
@@ -196,6 +199,7 @@ class DatasetExplorer:
         self.__add_to_our_annotation_dict(annotation)
         self.coco_json["annotations"].append(annotation)
         self.global_annotation_id += 1
+        self.save_flag = True
 
     def delet_annotation(self, image_id):
         # 加个判断，避免多点然后直接退出
@@ -208,19 +212,24 @@ class DatasetExplorer:
             index = self.coco_json["annotations"].index(annotation)
             self.coco_json["annotations"].pop(index)
             self.global_annotation_id -= 1
+            self.save_flag = True
 
     def save_annotation(self):
+        # 仅当有标注增加、减少时，调用此函数时才会去保存
+        if not self.save_flag:
+            return
+
         with open(self.coco_json_path, "w", encoding="utf-8") as f:
             # ensure_ascii=False是为了保存json时，中文就是中文，不会自动转为unicode字符
             json.dump(self.coco_json, f, ensure_ascii=False)
     
         # 这里是加的异步的备份数据保存：
-        if self.async_nums % 5 == 0:
+        if self.async_nums % 20 == 0:
             with open(self.backup_json_path, "w", encoding="utf-8") as f:
                 json.dump(self.coco_json, f, ensure_ascii=False)
             
         self.async_nums += 1
-
+        self.save_flag = False
 
     def get_last_anno_img_id(self):
         # 为了得到最后标注的一张的图片的id
