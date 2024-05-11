@@ -132,6 +132,7 @@ class ApplicationInterface(QWidget):
 
         self.editor.prev_image()
         self.graphics_view.imshow(self.editor.display)
+        self.editor.save()
 
     def toggle(self):
         self.editor.toggle()
