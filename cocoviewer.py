@@ -628,7 +628,6 @@ class Controller:
         """
         response = simpledialog.askinteger(title="跳转", prompt=f"请输入[1, {self.data.images.max}]中的整数:", 
                                            initialvalue=self.data.images.n+1, minvalue=1, maxvalue=self.data.images.max)
-        print(response)
         if response is not None:
             self.data.skip_image(response - 1)  # 输入的时候加1了，这里减去，且输入弹窗已经做了校验了
             self.set_locals()
