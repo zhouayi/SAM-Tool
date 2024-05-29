@@ -221,16 +221,17 @@ class ApplicationInterface(QWidget):
             event.ignore()  # 忽视点击X事件
         # return super().closeEvent(event)
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event: QtGui.QKeyEvent):
         if event.key() == Qt.Key_Escape:
-
             # 退出前再保存一下
             self.save_all()
             # 在关闭软件前先关闭线程池，并通过join阻塞祖先成，文件保存完后才退出。
             self.editor.pool.close()
             self.editor.pool.join()
-
             self.app.quit()
+        
+        # Qt.Key.Key_Left与Qt.Key_Left一个意思，后者没加枚举类的类名而已
+        # 在这里， Qt.Key.Key_Left 代表 <- 按键不起作用，可能是被过滤或者其他上层窗口捕捉了 
         if event.key() == Qt.Key_A:
             self.prev_image()
         if event.key() == Qt.Key_D:
@@ -247,6 +248,8 @@ class ApplicationInterface(QWidget):
             self.save_all()
         if event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_Z:
             self.delet()
+        if event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key.Key_G:
+            self.jump()
         # elif event.key() == Qt.Key_Space:
         #     # Do something if the space bar is pressed
         #     pass

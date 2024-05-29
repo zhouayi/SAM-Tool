@@ -75,10 +75,10 @@ python segment_anything_annotator.py --onnx-model-path sam_onnx.onnx --dataset-p
 
 其他使用快捷键有：
 
-| `Esc`：退出app  | `a`：前一张图片 | `d`：下一张图片 |
-| :-------------- | :-------------- | :-------------- |
-| `k`：调低透明度 | `l`：调高透明度 | `n`：添加对象   |
-| `r`：重置       | `Ctrl+s`：保存  |                 |
+| `n`：添加对象             | `d`：下一张图片          | `a`：前一张图片 |
+| :------------------------ | :----------------------- | :-------------- |
+| `r`：重置(选中区域错误时) | `Ctrl+z`：撤销已标记目标 | `Ctrl+g`：跳转  |
+| `k`：调低透明度           | `l`：调高透明度          | `Esc`：退出app  |
 
 ![image](assets/catdog.gif)
 
@@ -131,7 +131,7 @@ def draw_box_on_image(self, image, categories, ann, color):
 3. 鼠标左键点击目标选中后，一些靠的很近的其它区域若是也被选中了，可以点击鼠标右键取消那些区域，或者直接点击“重置”，重新来；
    同样鼠标左键点击目标选中后，目标区域并未被完全选中的话，可再用鼠标左键点击目未被选中的区域。
 4. 标错了(即出现了矩形框和标签后)，点击“撤销对象”或快捷键ctrl+z，可以取消。随后重新标注时标签上计数的数字可能有错误，但不影响。
-5. 点击下一张时会自动保存，但退出之前还是记得保存一下先。
+5. 点击上/下一张时会自动保存，但退出之前还是记得保存一下先（退出前也添加了自动保存）。
 6. 鼠标滚轮可以缩小放大图片。
 
 ### 7.2 新增特性及bug优化
@@ -143,7 +143,9 @@ def draw_box_on_image(self, image, categories, ann, color):
 5. 新增界面打的标签支持中文，可参考[这](https://blog.csdn.net/qq_45945548/article/details/121316099)。（simhei.ttf在./assets文件夹中有）
 6. 3.2步骤中，由sam_vit_h_4b8939.pth 转成./sam_onnx.onnx，现在我已经将转换好的onnx传上来了，但大小应该是指定的 1024 1280 ，但好像用其它尺寸的图像也是可以做标注，可以先试一试，不行再去转换。
 7. 新增**图片跳转**功能：点击窗口上方的“跳转”，输入跳转的序号，会跳到对应图片位置。
-8. 新增异步数据保存，标注过程更加顺滑，且每存5次，会更新"backup.json"做数据备份，以防软件意外退出时，异步数据没写完而导致"annotations.json"错误。
+   绑定快捷键为 Ctrl+G
+8. 新增异步数据保存，标注过程更加顺滑，且每存20次，会更新"backup.json"做数据备份，以防软件意外退出时，异步数据没写完而导致"annotations.json"错误。
+9. 修复类似同心圆目标，有空洞存在时，无法显示空洞的bug。
 
 - [x] ~~在标注过快时，可能会意外退出。报错"TypeError: Argument 'bb' has incorrect type (expected numpy.ndarray, got list)"~~
   已解决，bug原因[地址](https://github.com/anuragxel/salt/issues/43)。
@@ -175,25 +177,10 @@ pip install pyinstaller      # 为了打包
 
 按照上面的方法，得到的数据格式应如下：
 
-./
-│- └─dataset
-│	    ├─embeddings
-│    	│     00000.npy
-│    	│     00001.npy
-│    	│     00002.npy
-│    	│	 .......
-│    	└─images
-│        	 00000.jpg
-│         	00001.jpg
-│         	00002.jpg
-│    	 	.......
-
-│- sam_onnx.onnx
-│- segment_anything_annotator.exe
-
-
+![image](assets/data_sample.png)
 
 ## Reference
+
 https://github.com/facebookresearch/segment-anything 
 
 https://github.com/anuragxel/salt
