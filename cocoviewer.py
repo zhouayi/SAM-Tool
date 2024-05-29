@@ -18,6 +18,7 @@ import json
 import logging
 import os
 import random
+import cv2
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import filedialog, messagebox, simpledialog
@@ -118,10 +119,11 @@ def open_image(full_img_path: str):
     """Opens image, creates draw context."""
     # Open image
     img_open = Image.open(full_img_path).convert("RGBA")
+    img_size = img_open.size
     # Create layer for bboxes and masks
-    draw_layer = Image.new("RGBA", img_open.size, (255, 255, 255, 0))
+    draw_layer = Image.new("RGBA", img_size, (255, 255, 255, 0))
     draw = ImageDraw.Draw(draw_layer)
-    return img_open, draw_layer, draw
+    return img_open, draw_layer, draw, img_size
 
 
 def prepare_colors(n_objects: int, shuffle: bool = True) -> list:
@@ -186,7 +188,12 @@ def draw_bboxes(draw, objects, labels, obj_categories, ignore, width, label_size
                     # TODO: Implement notification message as popup window
                     font = ImageFont.load_default()
 
-                tw, th = draw.textsize(text, font)
+                # 原方式一直提示：“DeprecationWarning: textsize is deprecated and will be removed in Pillow 10 (2023-07-01). Use textbbox or textlength instead.”
+                # 解决方式参考：https://blog.csdn.net/qq_41604569/article/details/130720303
+                # tw, th = draw.textsize(text, font)  
+                bbox = draw.textbbox((0, 0), text, font=font)
+                tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+
                 tx0 = b[0]
                 ty0 = b[1] - th
 
@@ -206,7 +213,7 @@ def draw_bboxes(draw, objects, labels, obj_categories, ignore, width, label_size
                 draw.text((tx0, ty0), text, (255, 255, 255), font=font)
 
 
-def draw_masks(draw, objects, obj_categories, ignore, alpha):
+def draw_masks(draw, objects, obj_categories, img_size, ignore, alpha):
     """Draws a masks over image."""
     masks = [obj["segmentation"] for obj in objects]
     # Draw masks
@@ -216,9 +223,13 @@ def draw_masks(draw, objects, obj_categories, ignore, alpha):
             fill = tuple(list(c[-1]) + [alpha])
             # Polygonal masks work fine
             if isinstance(m, list):
-                for m_ in m:
-                    if m_:
-                        draw.polygon(m_, outline=fill, fill=fill)
+                mask = polys_to_mask(m, img_size[1], img_size[0])
+                mask = Image.fromarray(mask)
+                draw.bitmap((0, 0), mask, fill=fill)
+                # 下面这三行是原来的方式，对于同心圆挖空的mask，无法展示。
+                # for m_ in m:
+                #     if m_:
+                #         draw.polygon(m_, outline=fill, fill=fill)
             # RLE mask for collection of objects (iscrowd=1)
             elif isinstance(m, dict) and objects[i]["iscrowd"]:
                 mask = rle_to_mask(m["counts"][:-1], m["size"][0], m["size"][1])
@@ -227,6 +238,21 @@ def draw_masks(draw, objects, obj_categories, ignore, alpha):
 
             else:
                 continue
+
+
+def polys_to_mask(polys, height, width):
+    # 我加的，方法来自此项目的 display_utils.py 中的 __convert_ann_to_mask 方法
+    for i in range(len(polys)):
+        if len(polys[i]) == 4:
+            polys[i] += polys[i][-2:]
+    mask = np.ones((height, width), dtype=np.uint8)
+    for poly in polys:
+        temp_mask = np.zeros((height, width), dtype=np.uint8)
+        pts = np.asarray(poly, dtype=np.int32).reshape(-1, 2)
+        cv2.fillPoly(temp_mask, [pts], color=(1, 1, 1))
+        mask = np.logical_xor(mask, temp_mask)   # 逻辑亦或
+    mask = np.logical_not(mask)
+    return mask
 
 
 def rle_to_mask(rle, height, width):
@@ -658,10 +684,10 @@ class Controller:
         label_size: int = 15,
     ):
         ignore = ignore or []  # list of objects to ignore
-        img_open, draw_layer, draw = open_image(full_path)
+        img_open, draw_layer, draw, img_size = open_image(full_path)
         # Draw masks
         if masks_on:
-            draw_masks(draw, objects, names_colors, ignore, alpha)
+            draw_masks(draw, objects, names_colors, img_size, ignore, alpha)
         # Draw bounding boxes
         if bboxes_on:
             draw_bboxes(draw, objects, labels_on, names_colors, ignore, width, label_size)

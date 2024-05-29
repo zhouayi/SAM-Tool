@@ -27,21 +27,39 @@ class DisplayUtils:
         return image
 
     def __convert_ann_to_mask(self, ann, height, width):
-        mask = np.zeros((height, width), dtype=np.uint8)
-        poly = ann["segmentation"]
+        # polys结果是一个列表，代表着多个轮廓的坐标，
+        # ploys[0]是一个一维列表，代表着第一个轮廓，like this [x1, y1, x2, y2, x3, y3, ...]
+        polys = ann["segmentation"]
 
         # 当边框刚好是4个值，可能会被认为矩形框，会出错，所以为4个值，再后面添加一个相同的点的坐标
         # TODO: 那万一出现两个点,再加一个点坐标就是4个值了，可能会出错，先放这里吧。
         # 解决错误地址：https://github.com/anuragxel/salt/issues/43
-        for i in range(len(poly)):
-            if len(poly[i]) == 4:
-                poly[i] += poly[i][-2:]  # <---------------------------- Add same point again 
+        for i in range(len(polys)):
+            if len(polys[i]) == 4:
+                polys[i] += polys[i][-2:]  # <---------------------------- Add same point again 
 
-        rles = coco_mask.frPyObjects(poly, height, width)
-        rle = coco_mask.merge(rles)
-        mask_instance = coco_mask.decode(rle)
-        mask_instance = np.logical_not(mask_instance)
-        mask = np.logical_or(mask, mask_instance)
+        # #（原来的方式）pycocotools中，针对同心圆，中间有空洞的这种mask画出来，中间的空心也会被填满，视觉上看上去不对
+        # mask = np.zeros((height, width), dtype=np.uint8)  # 原来的
+        # rles = coco_mask.frPyObjects(polys, height, width)
+        # rle = coco_mask.merge(rles)
+        # mask_instance = coco_mask.decode(rle)
+        # mask_instance = np.logical_not(mask_instance)
+        # mask = np.logical_or(mask, mask_instance)
+        # mask = np.logical_not(mask)
+
+        """ 以下只是针对标注过程将mask显示出来而已，即使显示错误，对mask的标注结果是不影响的
+        1、先创建一个纯黑的初始化mask;
+        2、循环这些多边形的轮廓，每次都创建一个纯黑的temp_mask，然后用cv2.fillPoly把轮廓用白色填充;
+        3、初始的mask与temp_mask，进行 XOR 逻辑亦或 运算，简单说就是(0+0=0, 0+1=1, 1+1=0),即两个条件，有且仅有一个为真时才为真;
+        4、算第二个轮廓时，若是与第一个轮廓不相交，那就是0、1逻辑亦或为真，若是同心圆，那同心圆内部就是1+1=0，就把内部抠出来了;
+        TODO：可能当三个同心圆，即奇数时，最中心最小那个同心圆，会因为是0+1=1，而扣不出来，但遇到概率不大，就是有，也问题不大。
+        """
+        mask = np.ones((height, width), dtype=np.uint8)
+        for poly in polys:
+            temp_mask = np.zeros((height, width), dtype=np.uint8)
+            pts = np.asarray(poly, dtype=np.int32).reshape(-1, 2)
+            cv2.fillPoly(temp_mask, [pts], color=(1, 1, 1))
+            mask = np.logical_xor(mask, temp_mask)   # 逻辑亦或
         mask = np.logical_not(mask)
         return mask
 
