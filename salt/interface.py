@@ -144,6 +144,11 @@ class ApplicationInterface(QWidget):
         msg_box = QMessageBox(QMessageBox.Information, "进度", info)
         msg_box.exec_()
 
+    def toggle_mask(self):
+        # 可选择不展示掩码，提升一点标注性能
+        self.editor.toggle_mask()
+        self.graphics_view.imshow(self.editor.display)
+
     def jump(self):
         # 为了图片跳转
         value, success = QInputDialog.getInt(
@@ -175,10 +180,11 @@ class ApplicationInterface(QWidget):
             ("前一张", lambda: self.prev_image()),
             ("下一张", lambda: self.next_image()),
             ("显示已标注信息", lambda: self.toggle()),
+            ("显示掩码", lambda: self.toggle_mask()),
             ("显示当前进度", lambda: self.process()),
             ("跳转", lambda: self.jump()),
-            ("调高透明度", lambda: self.transparency_up()),
-            ("调低透明度", lambda: self.transparency_down()),
+            # ("调高透明度", lambda: self.transparency_up()),
+            # ("调低透明度", lambda: self.transparency_down()),   # 这俩用的太少了
             ("保存", lambda: self.save_all()),
         ]
         for button, lmb in buttons:
@@ -234,7 +240,7 @@ class ApplicationInterface(QWidget):
         # 在这里， Qt.Key.Key_Left 代表 <- 按键不起作用，可能是被过滤或者其他上层窗口捕捉了 
         if event.key() == Qt.Key_A:
             self.prev_image()
-        if event.key() == Qt.Key_D:
+        if event.key() == Qt.Key_D or event.key() == Qt.Key_G:
             self.next_image()
         if event.key() == Qt.Key_K:
             self.transparency_down()

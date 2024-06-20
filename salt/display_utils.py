@@ -3,10 +3,15 @@ import numpy as np
 from pycocotools import mask as coco_mask
 from PIL import Image, ImageDraw, ImageFont
 
+from multiprocessing import cpu_count
+from concurrent.futures import ThreadPoolExecutor
+
+
 class DisplayUtils:
     def __init__(self):
         self.transparency = 0.3
         self.box_width = 2
+        self.pool_draw = ThreadPoolExecutor(max_workers=cpu_count() - 1)
 
     def increase_transparency(self):
         self.transparency = min(1.0, self.transparency + 0.05)
@@ -18,11 +23,11 @@ class DisplayUtils:
         gray_mask = mask.astype(np.uint8) * 255
         gray_mask = cv2.merge([gray_mask, gray_mask, gray_mask])
         color_mask = cv2.bitwise_and(gray_mask, color)
-        masked_image = cv2.bitwise_and(image.copy(), color_mask)
+        masked_image = cv2.bitwise_and(image, color_mask)
         overlay_on_masked_image = cv2.addWeighted(
             masked_image, self.transparency, color_mask, 1 - self.transparency, 0
         )
-        background = cv2.bitwise_and(image.copy(), cv2.bitwise_not(color_mask))
+        background = cv2.bitwise_and(image, cv2.bitwise_not(color_mask))
         image = cv2.add(background, overlay_on_masked_image)
         return image
 
@@ -38,15 +43,6 @@ class DisplayUtils:
             if len(polys[i]) == 4:
                 polys[i] += polys[i][-2:]  # <---------------------------- Add same point again 
 
-        # #（原来的方式）pycocotools中，针对同心圆，中间有空洞的这种mask画出来，中间的空心也会被填满，视觉上看上去不对
-        # mask = np.zeros((height, width), dtype=np.uint8)  # 原来的
-        # rles = coco_mask.frPyObjects(polys, height, width)
-        # rle = coco_mask.merge(rles)
-        # mask_instance = coco_mask.decode(rle)
-        # mask_instance = np.logical_not(mask_instance)
-        # mask = np.logical_or(mask, mask_instance)
-        # mask = np.logical_not(mask)
-
         """ 以下只是针对标注过程将mask显示出来而已，即使显示错误，对mask的标注结果是不影响的
         1、先创建一个纯黑的初始化mask;
         2、循环这些多边形的轮廓，每次都创建一个纯黑的temp_mask，然后用cv2.fillPoly把轮廓用白色填充;
@@ -54,13 +50,23 @@ class DisplayUtils:
         4、算第二个轮廓时，若是与第一个轮廓不相交，那就是0、1逻辑亦或为真，若是同心圆，那同心圆内部就是1+1=0，就把内部抠出来了;
         TODO：可能当三个同心圆，即奇数时，最中心最小那个同心圆，会因为是0+1=1，而扣不出来，但遇到概率不大，就是有，也问题不大。
         """
-        mask = np.ones((height, width), dtype=np.uint8)
-        for poly in polys:
-            temp_mask = np.zeros((height, width), dtype=np.uint8)
-            pts = np.asarray(poly, dtype=np.int32).reshape(-1, 2)
-            cv2.fillPoly(temp_mask, [pts], color=(1, 1, 1))
-            mask = np.logical_xor(mask, temp_mask)   # 逻辑亦或
-        mask = np.logical_not(mask)
+        if len(polys) == 1:
+            # #（原来的方式）pycocotools中，针对同心圆，中间有空洞的这种mask画出来，中间的空心也会被填满，视觉上看上去不对
+            mask = np.zeros((height, width), dtype=np.uint8)  # 原来的
+            rles = coco_mask.frPyObjects(polys, height, width)
+            rle = coco_mask.merge(rles)
+            mask_instance = coco_mask.decode(rle)
+            mask_instance = np.logical_not(mask_instance)
+            mask = np.logical_or(mask, mask_instance)
+            mask = np.logical_not(mask)
+        else:
+            mask = np.ones((height, width), dtype=np.uint8)
+            for poly in polys:
+                temp_mask = np.zeros((height, width), dtype=np.uint8)
+                pts = np.asarray(poly, dtype=np.int32).reshape(-1, 2)
+                cv2.fillPoly(temp_mask, [pts], color=(1, 1, 1))
+                mask = np.logical_xor(mask, temp_mask)   # 逻辑亦或
+            mask = np.logical_not(mask)
         return mask
 
     def draw_box_on_image(self, image, categories, ann, color):
@@ -84,11 +90,36 @@ class DisplayUtils:
         
         return image
 
-    def draw_annotations(self, image, categories, annotations, colors):
+    def draw_annotations(self, image, categories, annotations, colors, draw_mask=True):
+        """
+        # 这是原来的实现
         for ann, color in zip(annotations, colors):
             image = self.draw_box_on_image(image, categories, ann, color)
             mask = self.__convert_ann_to_mask(ann, image.shape[0], image.shape[1])
             image = self.overlay_mask_on_image(image, mask, color)
+        """
+
+        maskes = None
+        if draw_mask:
+            # # 先把所有的mask都算出来（性能提升大约是画20多个目标，从 2.56s 提升到 2.35s 这种，并不是很明显）
+            # # 提交任务给线程池，并返回结果对象
+            future_results = [self.pool_draw.submit(self.__convert_ann_to_mask, anno, image.shape[0], image.shape[1]) 
+                            for anno in annotations]  
+            # 等待所有任务完成，并获取结果
+            maskes = [future_mask.result() for future_mask in future_results]
+        
+        if maskes is not None:
+            for ann, mask, color in zip(annotations, maskes, colors):
+                image = self.draw_box_on_image(image, categories, ann, color)
+                image = self.overlay_mask_on_image(image, mask, color)
+        else:
+            # TODO:这里本来是只画框就好了，但只画框，循环两次后就会报错，所以就弄了一个假的掩码，仿着原来的才对，
+            # 那后面有时间看排查一下，把画假掩码去掉。
+            mask = np.zeros((image.shape[0], image.shape[1]))
+            for ann, color in zip(annotations, colors):
+                image = self.draw_box_on_image(image, categories, ann, color)
+                image = self.overlay_mask_on_image(image, mask, color)
+
         return image
 
     def draw_points(

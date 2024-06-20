@@ -60,6 +60,8 @@ class Editor:
 
         self.category_id = 0
         self.show_other_anns = True
+        # 是否展示掩码（标注数据过多时可以考虑不展示）
+        self.show_mask = True
         (
             self.image,
             self.image_bgr,
@@ -85,7 +87,8 @@ class Editor:
             low_res_logits=self.curr_inputs.low_res_logits,
         )
         self.display = self.image_bgr.copy()
-        self.draw_known_annotations()
+        # 现在改为，鼠标点击时时不再去画已经标注的框，不然在目标很多时，这很耗时间
+        # self.draw_known_annotations()   
         self.display = self.du.draw_points(
             self.display, self.curr_inputs.input_point, self.curr_inputs.input_label
         )
@@ -97,7 +100,7 @@ class Editor:
         anns, colors = self.dataset_explorer.get_annotations(
             self.image_id, return_colors=True
         )
-        self.display = self.du.draw_annotations(self.display, self.categories, anns, colors)
+        self.display = self.du.draw_annotations(self.display, self.categories, anns, colors, self.show_mask)
 
     def reset(self, hard=True):
         self.curr_inputs.reset_inputs()
@@ -107,6 +110,10 @@ class Editor:
 
     def toggle(self):
         self.show_other_anns = not self.show_other_anns
+        self.reset()
+
+    def toggle_mask(self):
+        self.show_mask = not self.show_mask
         self.reset()
     
     def step_up_transparency(self):
