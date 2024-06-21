@@ -145,8 +145,13 @@ class ApplicationInterface(QWidget):
         msg_box.exec_()
 
     def toggle_mask(self):
-        # 可选择不展示掩码，提升一点标注性能
+        # 当单张图上目标过多时，可不显示mask，以加快速度
         self.editor.toggle_mask()
+        self.graphics_view.imshow(self.editor.display)
+
+    def toggle_single_category(self):
+        # 当单张图上目标过多时，可只展示当前标注的类别，可提升标注速度
+        self.editor.toggle_single_category()
         self.graphics_view.imshow(self.editor.display)
 
     def jump(self):
@@ -180,6 +185,7 @@ class ApplicationInterface(QWidget):
             ("前一张", lambda: self.prev_image()),
             ("下一张", lambda: self.next_image()),
             ("显示已标注信息", lambda: self.toggle()),
+            ("仅显示当前类别", lambda: self.toggle_single_category()),
             ("显示掩码", lambda: self.toggle_mask()),
             ("显示当前进度", lambda: self.process()),
             ("跳转", lambda: self.jump()),

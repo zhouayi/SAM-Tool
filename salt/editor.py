@@ -62,12 +62,16 @@ class Editor:
         self.show_other_anns = True
         # 是否展示掩码（标注数据过多时可以考虑不展示）
         self.show_mask = True
+        # 是否仅展示当前标注的类（不展示其它已经标注了的类，可一定程度上加快速度）
+        self.show_current_category = False
+
         (
             self.image,
             self.image_bgr,
             self.image_embedding,
         ) = self.dataset_explorer.get_image_data(self.image_id)
         self.display = self.image_bgr.copy()
+
         self.du = DisplayUtils()
         self.reset()
 
@@ -100,6 +104,19 @@ class Editor:
         anns, colors = self.dataset_explorer.get_annotations(
             self.image_id, return_colors=True
         )
+
+        if self.show_current_category:
+            current_anns = []
+            current_colors = []
+            for i, ann in enumerate(anns):
+                category_id = ann.get("category_id")
+                if category_id != self.category_id:
+                    continue
+                current_anns.append(anns[i])
+                current_colors.append(colors[i])
+            anns = current_anns
+            colors = current_colors
+
         self.display = self.du.draw_annotations(self.display, self.categories, anns, colors, self.show_mask)
 
     def reset(self, hard=True):
@@ -110,12 +127,17 @@ class Editor:
 
     def toggle(self):
         self.show_other_anns = not self.show_other_anns
+        self.show_current_category = False  # 点显示标注信息这个按钮时，总是把显示单个类别置为False
         self.reset()
 
     def toggle_mask(self):
         self.show_mask = not self.show_mask
         self.reset()
     
+    def toggle_single_category(self):
+        self.show_current_category = not self.show_current_category
+        self.reset()
+
     def step_up_transparency(self):
         self.du.increase_transparency()
         self.reset()
