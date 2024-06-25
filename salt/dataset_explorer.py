@@ -141,6 +141,9 @@ class DatasetExplorer:
         # 创建一个变量来记录标注是否变化，变化了才会存json文件，而不是每次下一张都存，会极大改善快速连续下一张的卡顿感
         self.save_flag = False
 
+        # 记录当前图片名
+        self.img_base_name = None
+
     def __init_coco_json(self, categories):
         appended_image_names = [
             os.path.join("images", name) for name in self.image_names
@@ -238,3 +241,8 @@ class DatasetExplorer:
     def get_imgs_num(self):
         # 得到所有的图片数量
         return self.imgs_num
+    
+    def get_img_base_name(self, image_id):
+        image_name = self.coco_json["images"][image_id]["file_name"]
+        self.img_base_name = os.path.basename(image_name)
+        return self.img_base_name

@@ -6,7 +6,10 @@ from multiprocessing import cpu_count
 
 from salt.onnx_model import OnnxModel
 from salt.dataset_explorer import DatasetExplorer
-from salt.display_utils import DisplayUtils
+# from salt.display_utils import DisplayUtils
+
+from .display_utils import DisplayUtils
+
 
 from PyQt5.QtWidgets import QMessageBox
 
@@ -56,7 +59,9 @@ class Editor:
         # 得到最后标注的一张的id，也就是当前打开图片的id
         self.image_id = self.dataset_explorer.get_last_anno_img_id()  
          # 得到所有图片数量
-        self.imgs_num = self.dataset_explorer.get_imgs_num()         
+        self.imgs_num = self.dataset_explorer.get_imgs_num()     
+        # 得到当前图片的名字
+        self.img_name = self.dataset_explorer.get_img_base_name(self.image_id)
 
         self.category_id = 0
         self.show_other_anns = True
@@ -172,6 +177,7 @@ class Editor:
             self.image_bgr,
             self.image_embedding,
         ) = self.dataset_explorer.get_image_data(self.image_id)
+        self.img_name = self.dataset_explorer.get_img_base_name(self.image_id)
         self.display = self.image_bgr.copy()
         self.reset()
 
@@ -184,6 +190,7 @@ class Editor:
             self.image_bgr,
             self.image_embedding,
         ) = self.dataset_explorer.get_image_data(self.image_id)
+        self.img_name = self.dataset_explorer.get_img_base_name(self.image_id)
         self.display = self.image_bgr.copy()
         self.reset()
 

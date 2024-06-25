@@ -69,6 +69,8 @@ class CustomGraphicsView(QGraphicsView):
             label = 1
         elif event.button() == Qt.RightButton:
             label = 0
+        else:
+            return
         self.editor.add_click([int(x), int(y)], label)
         self.imshow(self.editor.display)
 
@@ -140,7 +142,7 @@ class ApplicationInterface(QWidget):
 
     def process(self):
         # 为了显示一下进度
-        info = "当前进度：{}/{}".format(self.editor.image_id + 1, self.editor.imgs_num)
+        info = "当前进度：{}/{}   ({})".format(self.editor.image_id + 1, self.editor.imgs_num, self.editor.img_name)
         msg_box = QMessageBox(QMessageBox.Information, "进度", info)
         msg_box.exec_()
 
