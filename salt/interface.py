@@ -188,7 +188,7 @@ class ApplicationInterface(QWidget):
             ("下一张", lambda: self.next_image()),
             ("显示已标注信息", lambda: self.toggle()),
             ("仅显示当前类别", lambda: self.toggle_single_category()),
-            ("显示掩码", lambda: self.toggle_mask()),
+            # ("显示掩码", lambda: self.toggle_mask()),
             ("显示当前进度", lambda: self.process()),
             ("跳转", lambda: self.jump()),
             # ("调高透明度", lambda: self.transparency_up()),
@@ -248,7 +248,7 @@ class ApplicationInterface(QWidget):
         # 在这里， Qt.Key.Key_Left 代表 <- 按键不起作用，可能是被过滤或者其他上层窗口捕捉了 
         if event.key() == Qt.Key_A:
             self.prev_image()
-        if event.key() == Qt.Key_D or event.key() == Qt.Key_G:
+        if event.key() == Qt.Key_D:
             self.next_image()
         if event.key() == Qt.Key_K:
             self.transparency_down()

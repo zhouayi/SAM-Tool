@@ -141,6 +141,7 @@ class Editor:
     
     def toggle_single_category(self):
         self.show_current_category = not self.show_current_category
+        self.show_other_anns = True  # 点击显示单个类别时，把展示标注总是打开
         self.reset()
 
     def step_up_transparency(self):
@@ -152,7 +153,7 @@ class Editor:
         self.reset()
 
     def save_ann(self):
-        if  self.not_selected_category_flag:
+        if self.not_selected_category_flag:
             msg_box = QMessageBox(QMessageBox.Critical, "错误", "请先从右边选择你的目标类别！")
             msg_box.exec_()
         else:
@@ -161,7 +162,11 @@ class Editor:
         )
 
     def delet_ann(self):
-        self.dataset_explorer.delet_annotation(self.image_id)
+        if self.not_selected_category_flag:
+            msg_box = QMessageBox(QMessageBox.Critical, "错误", "请先从右边选择你要删除的目标类别！")
+            msg_box.exec_()
+        else:
+            self.dataset_explorer.delet_annotation(self.image_id, self.category_id)
 
     def save(self):
         # self.dataset_explorer.save_annotation()

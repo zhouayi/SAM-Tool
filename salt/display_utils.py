@@ -6,18 +6,49 @@ from PIL import Image, ImageDraw, ImageFont
 from multiprocessing import cpu_count
 from concurrent.futures import ThreadPoolExecutor
 
+from PIL import Image, ImageDraw, ImageFont
+
 
 class DisplayUtils:
     def __init__(self):
         self.transparency = 0.3
-        self.box_width = 2
+        self.box_width = 3
         self.pool_draw = ThreadPoolExecutor(max_workers=cpu_count() - 1)
+
+        # 加载标签的字体
+        try:
+            try:
+                # Should work for Linux
+                self.font = ImageFont.truetype("simhei.ttf", size=20)
+            except OSError:
+                # Should work for Windows
+                self.font = ImageFont.truetype("Arial.ttf", size=20)
+        except OSError:
+            # Load default, note no resize option
+            # TODO: Implement notification message as popup window
+            self.font = ImageFont.load_default()
 
     def increase_transparency(self):
         self.transparency = min(1.0, self.transparency + 0.05)
     
     def decrease_transparency(self):
         self.transparency = max(0.0, self.transparency - 0.05)
+
+    def _rle_to_mask(self, rle, height, width):
+        # 这是 cocoviewer.py 中来的
+        rows, cols = height, width
+        rle_pairs = np.array(rle).reshape(-1, 2)
+        img = np.zeros(rows * cols, dtype=np.uint8)
+        index_offset = 0
+
+        for index, length in rle_pairs:
+            index_offset += index
+            img[index_offset : index_offset + length] = 255
+            index_offset += length
+
+        img = img.reshape(cols, rows)
+        img = img.T
+        return img
 
     def overlay_mask_on_image(self, image, mask, color=(0, 0, 255)):
         gray_mask = mask.astype(np.uint8) * 255
@@ -34,8 +65,9 @@ class DisplayUtils:
     def __convert_ann_to_mask(self, ann, height, width):
         # polys结果是一个列表，代表着多个轮廓的坐标，
         # ploys[0]是一个一维列表，代表着第一个轮廓，like this [x1, y1, x2, y2, x3, y3, ...]
-        polys = ann["segmentation"]
-
+        # 做了兼容，原来的代码没取segmentation，后面自己改的代码取了传进来的
+        polys = ann["segmentation"] if isinstance(ann, dict) else ann
+ 
         # 当边框刚好是4个值，可能会被认为矩形框，会出错，所以为4个值，再后面添加一个相同的点的坐标
         # TODO: 那万一出现两个点,再加一个点坐标就是4个值了，可能会出错，先放这里吧。
         # 解决错误地址：https://github.com/anuragxel/salt/issues/43
@@ -74,17 +106,17 @@ class DisplayUtils:
         x, y, w, h = int(x), int(y), int(w), int(h)
         image = cv2.rectangle(image, (x, y), (x + w, y + h), color, self.box_width)
 
-        text = '{} {}'.format(ann["id"],categories[ann["category_id"]])
+        text = '{} {}'.format(ann["id"], categories[ann["category_id"]])
         txt_color = (0, 0, 0) if np.mean(color) > 127 else (255, 255, 255)
 
         # 增加中文的支持（原opencv不支持显示汉字）
-        font = ImageFont.truetype("c:/windows/fonts/simhei.ttf", size=30)
+        # font = ImageFont.truetype("c:/windows/fonts/simhei.ttf", size=30)
         image = image[..., ::-1] 
         image = Image.fromarray(image, mode="RGB")
         draw = ImageDraw.Draw(image)
-        txt_size = draw.textsize(text=text, font=font)
-        # draw.text((x + 1, y + 1), text, fill=txt_color, font=font)
-        draw.text((x + 1, y + 1), text, fill="red", font=font)
+        txt_size = draw.textsize(text=text, font=self.font)
+        # draw.text((x + 1, y + 1), text, fill=txt_color, font=self.font)
+        draw.text((x + 1, y + 1), text, fill="red", font=self.font)
         image = np.asarray(image)
         image = image[..., ::-1]
         
@@ -92,13 +124,15 @@ class DisplayUtils:
 
     def draw_annotations(self, image, categories, annotations, colors, draw_mask=True):
         """
-        # 这是原来的实现
+        # 1、这是原来的实现
         for ann, color in zip(annotations, colors):
             image = self.draw_box_on_image(image, categories, ann, color)
             mask = self.__convert_ann_to_mask(ann, image.shape[0], image.shape[1])
             image = self.overlay_mask_on_image(image, mask, color)
         """
 
+        """
+        # 2、这是后面想通过多线程、不画mask的方式，提升不大。
         maskes = None
         if draw_mask:
             # # 先把所有的mask都算出来（性能提升大约是画20多个目标，从 2.56s 提升到 2.35s 这种，并不是很明显）
@@ -119,7 +153,61 @@ class DisplayUtils:
             for ann, color in zip(annotations, colors):
                 image = self.draw_box_on_image(image, categories, ann, color)
                 image = self.overlay_mask_on_image(image, mask, color)
+        
+        """
 
+        # 这是仿照 coco.view.py 写的，用PIL实现的，一张图28个目标，展示两张图，draw_annotations函数也调用了两次
+        # 最原始的方法耗时 2.224s，下面这个耗时 0.354s, 快了大约6.3倍，以后再有类似的画图，来看看这
+        # 传进来的格式是bgr的
+        img_open = Image.fromarray(image[..., ::-1], mode="RGB").convert("RGBA")
+        img_size = img_open.size
+        # Create layer for bboxes and masks
+        draw_layer = Image.new("RGBA", img_size, (255, 255, 255, 0))
+        draw = ImageDraw.Draw(draw_layer)
+
+        # 画mask
+        masks = [anno["segmentation"] for anno in annotations]
+        # 画框
+        bboxes = [
+            [
+                anno["bbox"][0],
+                anno["bbox"][1],
+                anno["bbox"][0] + anno["bbox"][2],
+                anno["bbox"][1] + anno["bbox"][3]
+            ] 
+            for anno in annotations
+        ]
+
+        # 画mask
+        for i, (m, c) in enumerate(zip(masks, colors)):
+            annotation = annotations[i]
+            # TODO: 可把 128 设成 alpha 变量，然后通过界面点击来传参设置这个值
+            # 这里 128 是设置mask的透明度的，范围是 [0, 255]， 0的话mask几乎看不到，255的话就几乎只看的到mask
+            fill  = tuple(list(c) + [128])
+            if isinstance(m, list):
+                mask = self.__convert_ann_to_mask(m, image.shape[0], image.shape[1])
+                mask = Image.fromarray(mask)
+                draw.bitmap((0, 0), mask, fill=fill)
+            # RLE mask for collection of objects (iscrowd=1)
+            elif isinstance(m, dict) and annotation["iscrowd"]:
+                mask = self._rle_to_mask(m["counts"][:-1], m["size"][0], m["size"][1])
+                mask = Image.fromarray(mask)
+                draw.bitmap((0, 0), mask, fill=fill)
+
+        # 画框 (另起一个循环，不然先画的标签会被后画的mask盖住)
+        for i, (b, c) in enumerate(zip(bboxes, colors)):
+            annotation = annotations[i]
+            draw.rectangle(b, outline=c, width=self.box_width)
+            text = "{} {}".format(annotation["id"], categories[annotation["category_id"]])
+            draw.text((b[0], b[1]), text, fill="red", font=self.font)
+
+        image = Image.alpha_composite(img_open, draw_layer)
+        image = np.asarray(image.convert("RGB"))
+        # 这里一定要 .copy() 一下，不然 interface.py的60行中的QImage会报错
+        # 解决办法来自：https://blog.csdn.net/weixin_44503976/article/details/130206803
+        image = image[..., ::-1].copy()
+        del draw
+        
         return image
 
     def draw_points(
