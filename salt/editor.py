@@ -145,6 +145,10 @@ class Editor:
     def toggle_process_show(self):
         self.show_process_annotations = not self.show_process_annotations
     
+    def toggle_nums(self):
+        self.du.show_nums = not self.du.show_nums
+        self.reset()
+
     def toggle_single_category(self):
         self.show_current_category = not self.show_current_category
         self.show_other_anns = True  # 点击显示单个类别时，把展示标注总是打开

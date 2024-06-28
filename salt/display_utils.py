@@ -31,6 +31,7 @@ class DisplayUtils:
         self.box_width = 3
         self.image_id = 0
         self.mask_cache = OrderedDict()
+        self.show_nums = True
         # self.pool_draw = ThreadPoolExecutor(max_workers=cpu_count() - 1)
 
         # 加载标签的字体
@@ -229,7 +230,11 @@ class DisplayUtils:
         for i, (b, c) in enumerate(zip(bboxes, colors)):
             annotation = annotations[i]
             draw.rectangle(b, outline=c, width=self.box_width)
-            text = "{} {}".format(annotation["id"], categories[annotation["category_id"]])
+            text = ""
+            if self.show_nums:
+                text = "{} {}".format(annotation["id"], categories[annotation["category_id"]])
+            else:
+                text = "{}".format(categories[annotation["category_id"]])
             draw.text((b[0], b[1]), text, fill="red", font=self.font)
 
         image = Image.alpha_composite(img_open, draw_layer)

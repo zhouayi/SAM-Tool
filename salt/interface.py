@@ -137,6 +137,7 @@ class ApplicationInterface(QWidget):
         self.editor.save()
 
     def toggle_process_show(self):
+        # 鼠标左右键点击选择目标时是否展示其它标注信息（标多个聚集在一起的小目标时可不开启，方便选中）
         self.editor.toggle_process_show()
 
     def toggle(self):
@@ -157,6 +158,10 @@ class ApplicationInterface(QWidget):
     def toggle_single_category(self):
         # 当单张图上目标过多时，可只展示当前标注的类别，可提升标注速度
         self.editor.toggle_single_category()
+        self.graphics_view.imshow(self.editor.display)
+
+    def toggle_nums(self):
+        self.editor.toggle_nums()
         self.graphics_view.imshow(self.editor.display)
 
     def jump(self):
@@ -191,7 +196,8 @@ class ApplicationInterface(QWidget):
             ("重置", lambda: self.reset()),
             ("前一张", lambda: self.prev_image()),
             ("下一张", lambda: self.next_image()),
-            ("点击过程展示标注", lambda: self.toggle_process_show()),
+            ("过程展示标注", lambda: self.toggle_process_show()),
+            ("显示编号", lambda: self.toggle_nums()),
             ("显示已标注信息", lambda: self.toggle()),
             ("仅显示当前类别", lambda: self.toggle_single_category()),
             # ("显示掩码", lambda: self.toggle_mask()),
