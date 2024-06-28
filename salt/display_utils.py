@@ -2,18 +2,36 @@ import cv2
 import numpy as np
 from pycocotools import mask as coco_mask
 from PIL import Image, ImageDraw, ImageFont
+from collections import OrderedDict
 
-from multiprocessing import cpu_count
-from concurrent.futures import ThreadPoolExecutor
+# from multiprocessing import cpu_count
+# from concurrent.futures import ThreadPoolExecutor
 
-from PIL import Image, ImageDraw, ImageFont
+"""
+使用缓存的装饰器，一些简单的函数可以用这个装饰器来完成hashmap的缓存，但自己像下面手动实现更加自定义些
+python3.9以上，from functools import cache
+python3.8以下，from functools import lru_cache
+# 在输出之前输入的数据后，它会直接去拿缓存，而不再去计算，没有的再去算，但这似乎无法手动释放，会越存越多，还是考虑 OrderedDict
+@cache
+def calc(x):
+    print(f"{x} + 1 is...")
+    time.sleep(2)
+    return x + 1
+
+while True:
+    input_ = int(input(">> "))
+    print(calc(input_))
+
+"""
 
 
 class DisplayUtils:
     def __init__(self):
         self.transparency = 0.3
         self.box_width = 3
-        self.pool_draw = ThreadPoolExecutor(max_workers=cpu_count() - 1)
+        self.image_id = 0
+        self.mask_cache = OrderedDict()
+        # self.pool_draw = ThreadPoolExecutor(max_workers=cpu_count() - 1)
 
         # 加载标签的字体
         try:
@@ -178,6 +196,12 @@ class DisplayUtils:
             for anno in annotations
         ]
 
+        # 判断一下是否还是同一张图，如果不是，就把图的id改成新的图的id，并且把上一张算的mask缓存清掉
+        image_id = annotations[0].get("image_id")
+        if self.image_id != image_id:
+            self.image_id = image_id
+            self.mask_cache.clear()
+
         # 画mask
         for i, (m, c) in enumerate(zip(masks, colors)):
             annotation = annotations[i]
@@ -185,7 +209,14 @@ class DisplayUtils:
             # 这里 128 是设置mask的透明度的，范围是 [0, 255]， 0的话mask几乎看不到，255的话就几乎只看的到mask
             fill  = tuple(list(c) + [128])
             if isinstance(m, list):
-                mask = self.__convert_ann_to_mask(m, image.shape[0], image.shape[1])
+                # 因为key要能hashmap才行，每个目标的bbox应该是唯一的，所以用它来做key
+                # 参考的是labelme的写法，在它源码的：labelme-main/labelme/ai/efficient_sam.py +19
+                key = np.asarray(annotation["bbox"]).tobytes()
+                mask = self.mask_cache.get(key, None)
+                if mask is None:
+                    mask = self.__convert_ann_to_mask(m, image.shape[0], image.shape[1])
+                    self.mask_cache[key] = mask
+
                 mask = Image.fromarray(mask)
                 draw.bitmap((0, 0), mask, fill=fill)
             # RLE mask for collection of objects (iscrowd=1)

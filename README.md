@@ -150,6 +150,7 @@ def draw_box_on_image(self, image, categories, ann, color):
 11. 修改画mask掩码从opencv的实现方式到pillow的实现方式，画面展示速度提升极大。
 12. 新增仅展示当前标注类别数据的功能。
 13. 新增撤销对象也只能撤销当前选中的类别的对象，但同一类别的对象的撤销顺序暂目前只支持标注的倒序撤销。
+14. 增加计算mask时的缓存策略，进一步提升软件速度，同时新增可选择点击区域时是否展示其它的标注mask。
 
 - [x] ~~在标注过快时，可能会意外退出。报错"TypeError: Argument 'bb' has incorrect type (expected numpy.ndarray, got list)"~~
   已解决，bug原因[地址](https://github.com/anuragxel/salt/issues/43)。

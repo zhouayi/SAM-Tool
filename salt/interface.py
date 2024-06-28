@@ -136,6 +136,9 @@ class ApplicationInterface(QWidget):
         self.graphics_view.imshow(self.editor.display)
         self.editor.save()
 
+    def toggle_process_show(self):
+        self.editor.toggle_process_show()
+
     def toggle(self):
         self.editor.toggle()
         self.graphics_view.imshow(self.editor.display)
@@ -181,15 +184,18 @@ class ApplicationInterface(QWidget):
         button_layout = QHBoxLayout(top_bar)
         self.layout.addLayout(button_layout)
         buttons = [
-            ("添加对象", lambda: self.add()),
-            ("撤销对象", lambda: self.delet()),
+            # ("添加对象", lambda: self.add()),
+            # ("撤销对象", lambda: self.delet()),
+            ("添加", lambda: self.add()),
+            ("撤销", lambda: self.delet()),
             ("重置", lambda: self.reset()),
             ("前一张", lambda: self.prev_image()),
             ("下一张", lambda: self.next_image()),
+            ("点击过程展示标注", lambda: self.toggle_process_show()),
             ("显示已标注信息", lambda: self.toggle()),
             ("仅显示当前类别", lambda: self.toggle_single_category()),
             # ("显示掩码", lambda: self.toggle_mask()),
-            ("显示当前进度", lambda: self.process()),
+            ("显示进度", lambda: self.process()),
             ("跳转", lambda: self.jump()),
             # ("调高透明度", lambda: self.transparency_up()),
             # ("调低透明度", lambda: self.transparency_down()),   # 这俩用的太少了

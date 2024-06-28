@@ -69,6 +69,8 @@ class Editor:
         self.show_mask = True
         # 是否仅展示当前标注的类（不展示其它已经标注了的类，可一定程度上加快速度）
         self.show_current_category = False
+        # 点击鼠标左键选区域时，是否把其他目标画出来
+        self.show_process_annotations = True
 
         (
             self.image,
@@ -96,8 +98,9 @@ class Editor:
             low_res_logits=self.curr_inputs.low_res_logits,
         )
         self.display = self.image_bgr.copy()
-        # 现在改为，鼠标点击时时不再去画已经标注的框，不然在目标很多时，这很耗时间
-        # self.draw_known_annotations()   
+        # 现在优化了，速度很快了，可根据喜好选择是否开启
+        if self.show_process_annotations:
+            self.draw_known_annotations()   
         self.display = self.du.draw_points(
             self.display, self.curr_inputs.input_point, self.curr_inputs.input_label
         )
@@ -138,6 +141,9 @@ class Editor:
     def toggle_mask(self):
         self.show_mask = not self.show_mask
         self.reset()
+
+    def toggle_process_show(self):
+        self.show_process_annotations = not self.show_process_annotations
     
     def toggle_single_category(self):
         self.show_current_category = not self.show_current_category
