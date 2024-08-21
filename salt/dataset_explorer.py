@@ -204,6 +204,11 @@ class DatasetExplorer:
     def add_annotation(self, image_id, category_id, mask, poly=True):
         if mask is None:
             return
+        # 直接双击两次右键时，是什么区域也没被选中，但此时mask会传进来，全为false
+        # 到下面函数计算时，遇到 cv2.convexHull 就会异常报错而推出，所以要判定一下
+        if not np.any(mask):
+            return
+
         annotation = parse_mask_to_coco(
             image_id, self.global_annotation_id, mask, category_id, poly=poly
         )

@@ -38,10 +38,10 @@ class DisplayUtils:
         try:
             try:
                 # Should work for Linux
-                self.font = ImageFont.truetype("simhei.ttf", size=20)
+                self.font = ImageFont.truetype("simhei.ttf", size=25)
             except OSError:
                 # Should work for Windows
-                self.font = ImageFont.truetype("Arial.ttf", size=20)
+                self.font = ImageFont.truetype("Arial.ttf", size=25)
         except OSError:
             # Load default, note no resize option
             # TODO: Implement notification message as popup window
@@ -174,6 +174,9 @@ class DisplayUtils:
                 image = self.overlay_mask_on_image(image, mask, color)
         
         """
+        # 判空一下，如果annotations都是空，直接返回原图就好了,不然下面annotations[0]会  list index out of range
+        if not annotations:
+            return image
 
         # 这是仿照 coco.view.py 写的，用PIL实现的，一张图28个目标，展示两张图，draw_annotations函数也调用了两次
         # 最原始的方法耗时 2.224s，下面这个耗时 0.354s, 快了大约6.3倍，以后再有类似的画图，来看看这
