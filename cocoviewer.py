@@ -1,7 +1,16 @@
 #!/usr/bin/env python3
 """COCO Dataset Viewer.
-
 View images with bboxes from the COCO dataset.
+
+使用：(要注意annotations.json中关于图片路径的写法，也要注意cocoviewer.py此文件放的路径)
+    python cocoviewer.py -i ./dataset -a ./dataset/annotations.json    # SAM_Tools中的用法
+    如果跟 annotations.json 放在一起，下面新增了参数的默认值，直接 python cocoviewer.py 就行了
+
+快捷键：
+    上一张：<-
+    下一张：->
+    跳转指定图片：Ctrl + G
+    退出：Ctrl + Q
 """
 import argparse
 import colorsys
@@ -9,9 +18,10 @@ import json
 import logging
 import os
 import random
+import cv2
 import tkinter as tk
 import tkinter.ttk as ttk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, simpledialog
 from turtle import __forwardmethods
 
 import numpy as np
@@ -20,15 +30,8 @@ from PIL import Image, ImageDraw, ImageFont, ImageTk
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 parser = argparse.ArgumentParser(description="View images with bboxes from the COCO dataset")
-parser.add_argument("-i", "--images", default="", type=str, metavar="PATH", help="path to images folder")
-parser.add_argument(
-    "-a",
-    "--annotations",
-    default="",
-    type=str,
-    metavar="PATH",
-    help="path to annotations json file",
-)
+parser.add_argument("-i", "--images", default=".", type=str, metavar="PATH", help="path to images folder")
+parser.add_argument("-a", "--annotations", default="annotations.json", type=str, metavar="PATH", help="path to annotations json file")
 
 
 class Data:
@@ -85,6 +88,10 @@ class Data:
         """Loads the previous image in a list."""
         self.current_image = self.images.prev()
 
+    # 我加的，跳转
+    def skip_image(self, n):
+        self.current_image = self.images.skip(n)
+
 
 def parse_coco(annotations_file: str) -> tuple:
     """Parses COCO json annotation file."""
@@ -98,7 +105,7 @@ def load_annotations(fname: str) -> dict:
     """Loads annotations file."""
     logging.info(f"Parsing {fname}...")
 
-    with open(fname) as f:
+    with open(fname, encoding="utf-8") as f:
         instances = json.load(f)
     return instances
 
@@ -112,10 +119,11 @@ def open_image(full_img_path: str):
     """Opens image, creates draw context."""
     # Open image
     img_open = Image.open(full_img_path).convert("RGBA")
+    img_size = img_open.size
     # Create layer for bboxes and masks
-    draw_layer = Image.new("RGBA", img_open.size, (255, 255, 255, 0))
+    draw_layer = Image.new("RGBA", img_size, (255, 255, 255, 0))
     draw = ImageDraw.Draw(draw_layer)
-    return img_open, draw_layer, draw
+    return img_open, draw_layer, draw, img_size
 
 
 def prepare_colors(n_objects: int, shuffle: bool = True) -> list:
@@ -171,7 +179,7 @@ def draw_bboxes(draw, objects, labels, obj_categories, ignore, width, label_size
                 try:
                     try:
                         # Should work for Linux
-                        font = ImageFont.truetype("DejaVuSans.ttf", size=label_size)
+                        font = ImageFont.truetype("simhei.ttf", size=label_size)
                     except OSError:
                         # Should work for Windows
                         font = ImageFont.truetype("Arial.ttf", size=label_size)
@@ -180,7 +188,12 @@ def draw_bboxes(draw, objects, labels, obj_categories, ignore, width, label_size
                     # TODO: Implement notification message as popup window
                     font = ImageFont.load_default()
 
-                tw, th = draw.textsize(text, font)
+                # 原方式一直提示：“DeprecationWarning: textsize is deprecated and will be removed in Pillow 10 (2023-07-01). Use textbbox or textlength instead.”
+                # 解决方式参考：https://blog.csdn.net/qq_41604569/article/details/130720303
+                # tw, th = draw.textsize(text, font)  
+                bbox = draw.textbbox((0, 0), text, font=font)
+                tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+
                 tx0 = b[0]
                 ty0 = b[1] - th
 
@@ -200,7 +213,7 @@ def draw_bboxes(draw, objects, labels, obj_categories, ignore, width, label_size
                 draw.text((tx0, ty0), text, (255, 255, 255), font=font)
 
 
-def draw_masks(draw, objects, obj_categories, ignore, alpha):
+def draw_masks(draw, objects, obj_categories, img_size, ignore, alpha):
     """Draws a masks over image."""
     masks = [obj["segmentation"] for obj in objects]
     # Draw masks
@@ -210,9 +223,13 @@ def draw_masks(draw, objects, obj_categories, ignore, alpha):
             fill = tuple(list(c[-1]) + [alpha])
             # Polygonal masks work fine
             if isinstance(m, list):
-                for m_ in m:
-                    if m_:
-                        draw.polygon(m_, outline=fill, fill=fill)
+                mask = polys_to_mask(m, img_size[1], img_size[0])
+                mask = Image.fromarray(mask)
+                draw.bitmap((0, 0), mask, fill=fill)
+                # 下面这三行是原来的方式，对于同心圆挖空的mask，无法展示。
+                # for m_ in m:
+                #     if m_:
+                #         draw.polygon(m_, outline=fill, fill=fill)
             # RLE mask for collection of objects (iscrowd=1)
             elif isinstance(m, dict) and objects[i]["iscrowd"]:
                 mask = rle_to_mask(m["counts"][:-1], m["size"][0], m["size"][1])
@@ -221,6 +238,21 @@ def draw_masks(draw, objects, obj_categories, ignore, alpha):
 
             else:
                 continue
+
+
+def polys_to_mask(polys, height, width):
+    # 我加的，方法来自此项目的 display_utils.py 中的 __convert_ann_to_mask 方法
+    for i in range(len(polys)):
+        if len(polys[i]) == 4:
+            polys[i] += polys[i][-2:]
+    mask = np.ones((height, width), dtype=np.uint8)
+    for poly in polys:
+        temp_mask = np.zeros((height, width), dtype=np.uint8)
+        pts = np.asarray(poly, dtype=np.int32).reshape(-1, 2)
+        cv2.fillPoly(temp_mask, [pts], color=(1, 1, 1))
+        mask = np.logical_xor(mask, temp_mask)   # 逻辑亦或
+    mask = np.logical_not(mask)
+    return mask
 
 
 def rle_to_mask(rle, height, width):
@@ -254,18 +286,37 @@ class ImageList:
         if self.n < self.max:
             current_image = self.image_list[self.n]
         else:
-            self.n = 0
-            current_image = self.image_list[self.n]
+            # 当是最后一张图时，再点击下一张就会跳到第一张
+            # self.n = 0
+            # current_image = self.image_list[self.n]
+
+            # 把原来的改成最后一张弹窗提示
+            current_image = self.image_list[-1]
+            messagebox.showwarning(title="警告", message="这已经是最后一张图了!")
+            self.n -= 1
         return current_image
 
     def prev(self):
         """Sets the previous image as current."""
         if self.n == 0:
-            self.n = self.max - 1
-            current_image = self.image_list[self.n]
+            # 当是第一张图时，再点击前一张就会跳到最后一张
+            # self.n = self.max - 1
+            # current_image = self.image_list[self.n]
+
+            # 现在改为弹窗提示
+            current_image = self.image_list[0]
+            messagebox.showwarning(title="警告", message="这已经是第一张图了!")
         else:
             self.n -= 1
             current_image = self.image_list[self.n]
+        return current_image
+    
+    # 我加的，进行跳转的
+    def skip(self, n):
+        current_image = self.image_list[self.n]
+        if 0 <= n < self.max:
+            self.n = n
+            current_image = self.image_list[n]
         return current_image
 
 
@@ -439,6 +490,11 @@ class Menu(tk.Menu):
     def file_menu(self):
         """File Menu."""
         menu = tk.Menu(self, tearoff=False)
+
+        # 我加的
+        menu.add_command(label="Skip", accelerator="Ctrl+G")
+        menu.add_separator()
+
         menu.add_command(label="Save", accelerator="Ctrl+S")
         menu.add_separator()
         menu.add_command(label="Exit", accelerator="Ctrl+Q")
@@ -459,7 +515,6 @@ class Menu(tk.Menu):
 
         menu.add_cascade(label="Coloring", menu=menu.colormenu)
         return menu
-
 
 class ObjectsPanel(ttk.PanedWindow):
     """Panels with listed objects and categories for the image."""
@@ -507,7 +562,7 @@ class SlidersBar(ttk.Frame):
 
 
 class Controller:
-    def __init__(self, data, root, image_panel, statusbar, menu, objects_panel, sliders):
+    def __init__(self, data: Data, root, image_panel, statusbar, menu: Menu, objects_panel, sliders):
         self.data = data  # data layer
         self.root = root  # root window
         self.image_panel = image_panel  # image panel
@@ -540,6 +595,10 @@ class Controller:
         # Menu Configuration
         self.menu.file.entryconfigure("Save", command=self.save_image)
         self.menu.file.entryconfigure("Exit", command=self.exit)
+
+        # 我加的
+        self.menu.file.entryconfigure("Skip", command=self.skip)
+
         self.menu.view.entryconfigure("BBoxes", variable=self.bboxes_on_global, command=self.menu_view_bboxes)
         self.menu.view.entryconfigure("Labels", variable=self.labels_on_global, command=self.menu_view_labels)
         self.menu.view.entryconfigure("Masks", variable=self.masks_on_global, command=self.menu_view_masks)
@@ -587,6 +646,21 @@ class Controller:
         self.current_img_categories = None
         self.update_img()
 
+    # 我加的
+    def skip(self, event=None):
+        """
+        输入整数的弹窗文档，还有输入文件之类的：
+            https://docs.python.org/zh-cn/3.12/library/dialog.html
+        """
+        response = simpledialog.askinteger(title="跳转", prompt=f"请输入[1, {self.data.images.max}]中的整数:", 
+                                           initialvalue=self.data.images.n+1, minvalue=1, maxvalue=self.data.images.max)
+        if response is not None:
+            self.data.skip_image(response - 1)  # 输入的时候加1了，这里减去，且输入弹窗已经做了校验了
+            self.set_locals()
+            self.selected_cats = None
+            self.selected_objs = None
+            self.update_img(local=False)
+
     def set_locals(self):
         self.bboxes_on_local = self.bboxes_on_global.get()
         self.labels_on_local = self.labels_on_global.get()
@@ -610,10 +684,10 @@ class Controller:
         label_size: int = 15,
     ):
         ignore = ignore or []  # list of objects to ignore
-        img_open, draw_layer, draw = open_image(full_path)
+        img_open, draw_layer, draw, img_size = open_image(full_path)
         # Draw masks
         if masks_on:
-            draw_masks(draw, objects, names_colors, ignore, alpha)
+            draw_masks(draw, objects, names_colors, img_size, ignore, alpha)
         # Draw bounding boxes
         if bboxes_on:
             draw_bboxes(draw, objects, labels_on, names_colors, ignore, width, label_size)
@@ -848,6 +922,9 @@ class Controller:
         self.root.bind("<j>", self.next_img)
         self.root.bind("<Control-q>", self.exit)
         self.root.bind("<Control-w>", self.exit)
+
+        # 我加的
+        self.root.bind("<Control-g>", self.skip)
 
         # Files
         self.root.bind("<Control-s>", self.save_image)
