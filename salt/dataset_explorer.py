@@ -92,7 +92,8 @@ def parse_mask_to_coco(image_id, anno_id, image_mask, category_id, poly=False):
             sc = bunch_coords(segmentation)
             sc = simplify_coords_vwp(sc, 2)
             sc = unbunch_coords(sc)
-            annotation["segmentation"].append(sc)
+            if len(sc) > 4:
+                annotation["segmentation"].append(sc)
     return annotation
 
 
