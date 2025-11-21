@@ -62,12 +62,24 @@ python segment_anything_annotator.py --onnx-model-path sam_onnx.onnx --dataset-p
 
 在对象位置出点击鼠标左键为增加掩码，点击右键为去掉该位置掩码。
 
+#### 🆕 新增功能
+
+**轮廓显示模式**：解决掩码遮挡图像内容的问题
+- 按 `b` 键可在轮廓模式和填充模式之间切换
+- 轮廓模式：仅显示边界线，不填充半透明区域，避免遮挡图像
+- 填充模式：传统的半透明掩码填充
+
+**标签显示控制**：解决文字标签遮挡的问题
+- 按 `t` 键可显示/隐藏文字标签
+- 隐藏标签后仍保留边界框，减少界面遮挡
+
 其他使用快捷键有：
 
 | `Esc`：退出app  | `a`：前一张图片 | `d`：下一张图片 |
 | :-------------- | :-------------- | :-------------- |
 | `k`：调低透明度 | `l`：调高透明度 | `n`：添加对象   |
-| `r`：重置       | `Ctrl+s`：保存  |                 |
+| `r`：重置       | `Ctrl+s`：保存  | `Ctrl+z`：撤销  |
+| **`b`：切换轮廓/填充模式** 🆕 | **`t`：显示/隐藏标签** 🆕 |                 |
 
 ![image](assets/catdog.gif)
 
@@ -107,7 +119,11 @@ def draw_box_on_image(self, image, categories, ann, color):
     cv2.putText(image, text, (x, y + txt_size[1]), font, 1.5, txt_color, thickness=5)
     return image
 ```
-- [ ] 2023.04.14新增加撤销上一个标注对象功能，快捷键Ctrl+z
+```
+- [ ] 2023.04.14 新增撤销上一个标注对象功能，快捷键Ctrl+z
+- [x] 2025.11.21 新增轮廓显示模式，快捷键b，解决掩码遮挡问题
+- [x] 2025.11.21 新增标签显示控制，快捷键t，解决文字遮挡问题
+- [x] 2025.11.21 修复隐藏标注后点击重新显示的bug
 
 ## Reference
 https://github.com/facebookresearch/segment-anything 
